@@ -1,0 +1,14 @@
+Backend
+For install env
+    python3 -m venv Smartcart
+For activate
+    source bin/activate
+For install flask
+    pip install flask
+Deactivate env
+    deactivate
+
+set FLASK_APP environment variable
+    export FLASK_APP=app.py
+run
+    flask run
