@@ -42,12 +42,14 @@ def search_recipes():
 @app.route("/recipe/<int:recipe_id>/ingredients")
 def recipe_ingredients(recipe_id):
     """Fetch ingredients for a recipe and search for related products."""
+    location_id = request.args.get("locationId")
+    print(f"Received locationId: {location_id}")
     try:
         # Step 1: Fetch ingredients
         ingredients = get_ingredients_from_recipe(recipe_id)
 
         # Step 2: Search products for ingredients
-        products = get_products_from_list(ingredients)
+        products = get_products_from_list(ingredients, location_id)
 
         return jsonify({"ingredients": ingredients, "products": products})
     except Exception as e:

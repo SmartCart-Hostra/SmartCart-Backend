@@ -12,3 +12,13 @@ set FLASK_APP environment variable
     export FLASK_APP=app.py
 run
     flask run
+for setup
+    pip install -r requirements.txt
+for update
+    pip freeze > requirements.txt
+
+Create a .env file in the Backend folder
+do
+CLIENT_ID="your kroger client id"
+CLIENT_SECRET="your kroger client secret""
+API_KEY="spoonacular api key"

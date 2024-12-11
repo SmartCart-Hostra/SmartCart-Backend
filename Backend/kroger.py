@@ -18,15 +18,23 @@ def get_access_token():
     else:
         raise Exception(f"Failed to get access token: {response.status_code}, {response.text}")
 
-def search_products(query, access_token):
-    """Search for products using Kroger API"""
-    url = f"https://api.kroger.com/v1/products?filter.term={query}&filter.limit=5"
+def search_products(query, access_token, location_id=None):
+    """Search for products using Kroger API."""
+    base_url = "https://api.kroger.com/v1/products"
+    params = {
+        "filter.term": query,
+        "filter.limit": 5
+    }
+    if location_id:
+        params["filter.locationId"] = location_id
+
     headers = {"Accept": "application/json", "Authorization": f"Bearer {access_token}"}
-    response = requests.get(url, headers=headers)
+    response = requests.get(base_url, headers=headers, params=params)
     if response.status_code == 200:
         return response.json()
     else:
         raise Exception(f"Failed to search products: {response.status_code}, {response.text}")
+
 
 def get_first_product(query):
     """Get the first product from the search results"""
@@ -39,14 +47,14 @@ def get_first_product(query):
 
         # Extract the first product from the data
         first_product = result["data"][0] if "data" in result and len(result["data"]) > 0 else None
-
+        print(first_product)
         return first_product
     except Exception as e:
         print("Error:", e)
         return None
 
-def get_products_from_list(queries):
-    """Search for multiple products and return a list of the first products for each query"""
+def get_products_from_list(queries, location_id):
+    """Search for multiple products and return a list of the first products for each query."""
     try:
         # Get the access token
         access_token = get_access_token()
@@ -57,9 +65,11 @@ def get_products_from_list(queries):
         # Loop through each query and get the first product
         for query in queries:
             print(f"Searching for: {query}")
-            result = search_products(query, access_token)
+            result = search_products(query, access_token, location_id)
             first_product = result["data"][0] if "data" in result and len(result["data"]) > 0 else None
+
             if first_product:
+                #print("Product JSON:", first_product)
                 products.append(first_product)
             else:
                 print(f"No product found for query: {query}")
@@ -68,12 +78,3 @@ def get_products_from_list(queries):
     except Exception as e:
         print("Error:", e)
         return []
-
-# # Example usage
-# queries = ["milk", "bread", "eggs", "butter"]
-# products = get_products_from_list(queries)
-
-# # Print results
-# for i, product in enumerate(products):
-#     print(f"Product {i + 1}:")
-#     print(product)

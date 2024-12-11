@@ -85,6 +85,8 @@
     </div>
 
     <script>
+        const locationId = "01400376"; // Replace with your actual Kroger location ID
+
         document.getElementById("recipe-form").addEventListener("submit", function (e) {
             e.preventDefault();
 
@@ -94,7 +96,7 @@
             // Clear previous results
             recipesDiv.innerHTML = "";
 
-            fetch(`/recipes?query=${query}`)
+            fetch(`/recipes?query=${query}&locationId=${locationId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.results && data.results.length > 0) {
@@ -114,14 +116,12 @@
 
                             recipesDiv.appendChild(recipeCard);
 
-                            // Add event listener to the "Show Ingredients" button
                             recipeCard.querySelector(".ingredients-button").addEventListener("click", () => {
                                 const ingredientsDiv = document.getElementById(`ingredients-${recipe.id}`);
                                 const productsDiv = document.getElementById(`products-${recipe.id}`);
 
-                                // Check if data is already shown
                                 if (ingredientsDiv.innerHTML.trim() === "") {
-                                    fetch(`/recipe/${recipe.id}/ingredients`)
+                                    fetch(`/recipe/${recipe.id}/ingredients?locationId=${locationId}`)
                                         .then(response => response.json())
                                         .then(data => {
                                             if (data.ingredients) {
@@ -132,13 +132,29 @@
                                             }
 
                                             if (data.products) {
-                                                const productsList = data.products.map(product => `
-                                                    <li>
-                                                        <strong>${product.description}</strong> (Brand: ${product.brand})
-                                                        <p>Product ID: ${product.productId}</p>
-                                                        <img src="${product.images[0].sizes[0].url}" alt="${product.description}">
-                                                    </li>
-                                                `).join('');
+                                                const productsList = data.products.map(product => {
+                                                    const size = product.items && product.items.length > 0
+                                                        ? product.items[0].size
+                                                        : "Not Specified";
+
+                                                    const price = product.items && product.items[0].price
+                                                        ? `$${product.items[0].price.regular}`
+                                                        : "Not Available";
+
+                                                    const imageUrl = product.images && product.images.length > 0 && product.images[0].sizes.length > 0
+                                                        ? product.images[0].sizes[0].url
+                                                        : "https://via.placeholder.com/150";
+
+                                                    return `
+                                                        <li>
+                                                            <img src="${imageUrl}" alt="${product.description}" style="max-width: 100px; border-radius: 4px;">
+                                                            <strong>${product.description}</strong>
+                                                            <p>Brand: ${product.brand}</p>
+                                                            <p>Price: ${price}</p>
+                                                            <p>Size: ${size}</p>
+                                                        </li>
+                                                    `;
+                                                }).join('');
                                                 productsDiv.innerHTML = `<ul>${productsList}</ul>`;
                                             } else {
                                                 productsDiv.innerHTML = '<p>No related products found.</p>';
@@ -150,7 +166,6 @@
                                             productsDiv.innerHTML = '<p>An error occurred while fetching products.</p>';
                                         });
                                 } else {
-                                    // Hide data if already visible
                                     ingredientsDiv.innerHTML = "";
                                     productsDiv.innerHTML = "";
                                 }
