@@ -1,12 +1,12 @@
 import os
 import requests
-from flask import jsonify
+from flask import jsonify, request
 from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
 
 # Spoonacular API key
-SPOONACULAR_API_KEY = os.getenv("SPOONACULAR_API_KEY")
+SPOONACULAR_API_KEY = os.getenv("API_KEY")
 
 def recipes():
     """
