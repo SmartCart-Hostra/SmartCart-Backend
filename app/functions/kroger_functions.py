@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import jsonify
+from flask import jsonify,request
 from dotenv import load_dotenv
 
 load_dotenv()  # Load environment variables from .env file
@@ -104,10 +104,11 @@ def get_kroger_product_details(ingredient_name, access_token):
         print(f"Error fetching product details for {ingredient_name}: {str(e)}")
         return None
 
-def kroger_search(query):
+def kroger_search():
     """
     Search for Kroger products based on a query.
     """
+    query = request.args.get("query")
     if not query:
         return jsonify({'error': 'No search query provided'}), 400
 
