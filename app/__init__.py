@@ -18,6 +18,7 @@ try:
     db = client['user_auth_db']  # You can change the database name
     users_collection = db['users']
     tokens_collection = db['tokens']
+    diet_preferences_collection = db['diet_preferences']
 except Exception as e:
     print(f"Error connecting to MongoDB Atlas: {e}")
     raise
@@ -26,11 +27,13 @@ except Exception as e:
 from app.routes.auth_routes import auth_routes
 from app.routes.kroger_routes import kroger_routes
 from app.routes.recipe_routes import recipe_routes
+from app.routes.preference_routes import preference_routes
 
 # Register blueprints
 app.register_blueprint(auth_routes)
 app.register_blueprint(kroger_routes)
 app.register_blueprint(recipe_routes)
+app.register_blueprint(preference_routes)
 
 # Set JWT secret key
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
