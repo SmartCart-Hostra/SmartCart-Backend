@@ -36,6 +36,7 @@ LOCATION_ID = '01400943'
 # MongoDB Atlas setup
 MONGODB_URI = os.getenv('MONGODB_URI')
 
+
 try:
     client = MongoClient(MONGODB_URI)
     # Ping the database to verify connection
@@ -44,6 +45,7 @@ try:
     db = client['user_auth_db']  # You can change the database name
     users_collection = db['users']
     tokens_collection = db['tokens']
+    diet_preferences_collection = db['diet_preferences']
 except Exception as e:
     print(f"Error connecting to MongoDB Atlas: {e}")
     raise
@@ -532,6 +534,51 @@ def kroger_search():
             'products': [],
             'error': str(e)
         })
+    
+@app.route('/diet/preferences', methods=['GET'])
+@token_required
+def get_diet_preferences(current_user):
+    """Get user's diet preferences"""
+    preferences = diet_preferences_collection.find_one({'email': current_user['email']})
+    return jsonify({
+        'preferences': preferences['preferences'] if preferences else []
+    }), 200
+
+@app.route('/diet/preferences', methods=['POST'])
+@token_required
+def add_diet_preference(current_user):
+    """Add a diet preference"""
+    data = request.json
+    if not data or not data.get('preference'):
+        return jsonify({'message': 'Missing preference field'}), 400
+    
+    # Add to set to avoid duplicates
+    result = diet_preferences_collection.update_one(
+        {'email': current_user['email']},
+        {'$addToSet': {'preferences': data['preference'].lower()}},
+        upsert=True
+    )
+    
+    return jsonify({'message': 'Preference added successfully'}), 201
+
+@app.route('/diet/preferences', methods=['DELETE'])
+@token_required
+def remove_diet_preference(current_user):
+    """Remove a diet preference"""
+    data = request.json
+    if not data or not data.get('preference'):
+        return jsonify({'message': 'Missing preference field'}), 400
+    
+    # Remove from array
+    result = diet_preferences_collection.update_one(
+        {'email': current_user['email']},
+        {'$pull': {'preferences': data['preference'].lower()}}
+    )
+    
+    if result.modified_count == 0:
+        return jsonify({'message': 'Preference not found'}), 404
+    
+    return jsonify({'message': 'Preference removed successfully'}), 200
 
 if __name__ == "__main__":
     # accessTokenKroger = get_access_token()
