@@ -1,14 +1,18 @@
 import os
 import requests
-from flask import jsonify, request
-from app import user_preferences_collection
+from flask import Blueprint, jsonify, request, current_app
+from app.functions.auth_functions import token_required
+
+recipe_routes = Blueprint('recipe_routes', __name__)
 
 API_KEY = os.getenv("API_KEY")
 
+@recipe_routes.route('/recipes', methods=['GET'])
+@token_required
 def get_recipes(current_user):
     try:
         query = request.args.get("query")
-        prefs = user_preferences_collection.find_one(
+        prefs = current_app.user_preferences_collection.find_one(
             {"email": current_user["email"]}
         ) or {}
 

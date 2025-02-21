@@ -18,7 +18,7 @@ try:
     db = client['user_auth_db']  # You can change the database name
     users_collection = db['users']
     tokens_collection = db['tokens']
-    diet_preferences_collection = db['diet_preferences']
+    user_preferences_collection = db['user_preferences']
 except Exception as e:
     print(f"Error connecting to MongoDB Atlas: {e}")
     raise
