@@ -49,44 +49,81 @@ def get_diets(current_user):
     prefs = user_preferences_collection.find_one({'email': current_user['email']})
     return jsonify({'diets': prefs.get('diets', []) if prefs else []}), 200
 
-def add_diet(current_user):
+def add_diets(current_user):
     data = request.json
-    if not data or not data.get('diet'):
-        return jsonify({'message': 'Missing diet field'}), 400
+    if not data or not data.get('diets') or not isinstance(data['diets'], list):
+        return jsonify({'message': 'Missing diets field or invalid format. Expected array of diets'}), 400
     
-    diet = validate_diet(data['diet'])
-    if not diet:
+    # Validate all diets first
+    validated_diets = []
+    invalid_diets = []
+    for diet in data['diets']:
+        validated = validate_diet(diet)
+        if validated:
+            validated_diets.append(validated)
+        else:
+            invalid_diets.append(diet)
+    
+    if invalid_diets:
         return jsonify({
-            'message': 'Invalid diet',
+            'message': 'Invalid diets found',
+            'invalid_diets': invalid_diets,
             'allowed': list(ALLOWED_DIETS.values())
         }), 400
     
+    if not validated_diets:
+        return jsonify({'message': 'No valid diets to add'}), 400
+    
+    # Add all valid diets at once
     user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$addToSet': {'diets': diet}},
+        {'$addToSet': {'diets': {'$each': validated_diets}}},
         upsert=True
     )
-    return jsonify({'message': 'Diet added successfully'}), 201
-
-def remove_diet(current_user):
-    data = request.json
-    if not data or not data.get('diet'):
-        return jsonify({'message': 'Missing diet field'}), 400
     
-    diet = validate_diet(data['diet'])
-    if not diet:
+    return jsonify({
+        'message': 'Diets added successfully',
+        'added_diets': validated_diets
+    }), 201
+
+def remove_diets(current_user):
+    data = request.json
+    if not data or not data.get('diets') or not isinstance(data['diets'], list):
+        return jsonify({'message': 'Missing diets field or invalid format. Expected array of diets'}), 400
+    
+    # Validate all diets first
+    validated_diets = []
+    invalid_diets = []
+    for diet in data['diets']:
+        validated = validate_diet(diet)
+        if validated:
+            validated_diets.append(validated)
+        else:
+            invalid_diets.append(diet)
+    
+    if invalid_diets:
         return jsonify({
-            'message': 'Invalid diet',
+            'message': 'Invalid diets found',
+            'invalid_diets': invalid_diets,
             'allowed': list(ALLOWED_DIETS.values())
         }), 400
     
+    if not validated_diets:
+        return jsonify({'message': 'No valid diets to remove'}), 400
+    
+    # Remove all valid diets at once
     result = user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$pull': {'diets': diet}}
+        {'$pull': {'diets': {'$in': validated_diets}}}
     )
+    
     if result.modified_count == 0:
-        return jsonify({'message': 'Diet not found'}), 404
-    return jsonify({'message': 'Diet removed successfully'}), 200
+        return jsonify({'message': 'No diets were found to remove'}), 404
+    
+    return jsonify({
+        'message': 'Diets removed successfully',
+        'removed_diets': validated_diets
+    }), 200
 
 # Intolerance Endpoints
 def get_intolerances(current_user):
