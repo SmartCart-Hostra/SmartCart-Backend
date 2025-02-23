@@ -130,85 +130,151 @@ def get_intolerances(current_user):
     prefs = user_preferences_collection.find_one({'email': current_user['email']})
     return jsonify({'intolerances': prefs.get('intolerances', []) if prefs else []}), 200
 
-def add_intolerance(current_user):
+def add_intolerances(current_user):
     data = request.json
-    if not data or not data.get('intolerance'):
-        return jsonify({'message': 'Missing intolerance field'}), 400
+    if not data or not data.get('intolerances') or not isinstance(data['intolerances'], list):
+        return jsonify({'message': 'Missing intolerances field or invalid format. Expected array of intolerances'}), 400
     
-    intolerance = validate_intolerance(data['intolerance'])
-    if not intolerance:
+    validated_intolerances = []
+    invalid_intolerances = []
+    for intolerance in data['intolerances']:
+        validated = validate_intolerance(intolerance)
+        if validated:
+            validated_intolerances.append(validated)
+        else:
+            invalid_intolerances.append(intolerance)
+    
+    if invalid_intolerances:
         return jsonify({
-            'message': 'Invalid intolerance',
+            'message': 'Invalid intolerances found',
+            'invalid_intolerances': invalid_intolerances,
             'allowed': list(ALLOWED_INTOLERANCES)
         }), 400
+    
+    if not validated_intolerances:
+        return jsonify({'message': 'No valid intolerances to add'}), 400
     
     user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$addToSet': {'intolerances': intolerance}},
+        {'$addToSet': {'intolerances': {'$each': validated_intolerances}}},
         upsert=True
     )
-    return jsonify({'message': 'Intolerance added successfully'}), 201
-
-def remove_intolerance(current_user):
-    data = request.json
-    if not data or not data.get('intolerance'):
-        return jsonify({'message': 'Missing intolerance field'}), 400
     
-    intolerance = validate_intolerance(data['intolerance'])
-    if not intolerance:
+    return jsonify({
+        'message': 'Intolerances added successfully',
+        'added_intolerances': validated_intolerances
+    }), 201
+
+def remove_intolerances(current_user):
+    data = request.json
+    if not data or not data.get('intolerances') or not isinstance(data['intolerances'], list):
+        return jsonify({'message': 'Missing intolerances field or invalid format. Expected array of intolerances'}), 400
+    
+    validated_intolerances = []
+    invalid_intolerances = []
+    for intolerance in data['intolerances']:
+        validated = validate_intolerance(intolerance)
+        if validated:
+            validated_intolerances.append(validated)
+        else:
+            invalid_intolerances.append(intolerance)
+    
+    if invalid_intolerances:
         return jsonify({
-            'message': 'Invalid intolerance',
+            'message': 'Invalid intolerances found',
+            'invalid_intolerances': invalid_intolerances,
             'allowed': list(ALLOWED_INTOLERANCES)
         }), 400
     
+    if not validated_intolerances:
+        return jsonify({'message': 'No valid intolerances to remove'}), 400
+    
     result = user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$pull': {'intolerances': intolerance}}
+        {'$pull': {'intolerances': {'$in': validated_intolerances}}}
     )
+    
     if result.modified_count == 0:
-        return jsonify({'message': 'Intolerance not found'}), 404
-    return jsonify({'message': 'Intolerance removed successfully'}), 200
+        return jsonify({'message': 'No intolerances were found to remove'}), 404
+    
+    return jsonify({
+        'message': 'Intolerances removed successfully',
+        'removed_intolerances': validated_intolerances
+    }), 200
 
 # Cuisine Endpoints
 def get_cuisines(current_user):
     prefs = user_preferences_collection.find_one({'email': current_user['email']})
     return jsonify({'cuisines': prefs.get('cuisines', []) if prefs else []}), 200
 
-def add_cuisine(current_user):
+def add_cuisines(current_user):
     data = request.json
-    if not data or not data.get('cuisine'):
-        return jsonify({'message': 'Missing cuisine field'}), 400
+    if not data or not data.get('cuisines') or not isinstance(data['cuisines'], list):
+        return jsonify({'message': 'Missing cuisines field or invalid format. Expected array of cuisines'}), 400
     
-    cuisine = validate_cuisine(data['cuisine'])
-    if not cuisine:
+    validated_cuisines = []
+    invalid_cuisines = []
+    for cuisine in data['cuisines']:
+        validated = validate_cuisine(cuisine)
+        if validated:
+            validated_cuisines.append(validated)
+        else:
+            invalid_cuisines.append(cuisine)
+    
+    if invalid_cuisines:
         return jsonify({
-            'message': 'Invalid cuisine',
+            'message': 'Invalid cuisines found',
+            'invalid_cuisines': invalid_cuisines,
             'allowed': sorted(ALLOWED_CUISINES)
         }), 400
+    
+    if not validated_cuisines:
+        return jsonify({'message': 'No valid cuisines to add'}), 400
     
     user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$addToSet': {'cuisines': cuisine}},
+        {'$addToSet': {'cuisines': {'$each': validated_cuisines}}},
         upsert=True
     )
-    return jsonify({'message': 'Cuisine added successfully'}), 201
-
-def remove_cuisine(current_user):
-    data = request.json
-    if not data or not data.get('cuisine'):
-        return jsonify({'message': 'Missing cuisine field'}), 400
     
-    cuisine = validate_cuisine(data['cuisine'])
-    if not cuisine:
+    return jsonify({
+        'message': 'Cuisines added successfully',
+        'added_cuisines': validated_cuisines
+    }), 201
+
+def remove_cuisines(current_user):
+    data = request.json
+    if not data or not data.get('cuisines') or not isinstance(data['cuisines'], list):
+        return jsonify({'message': 'Missing cuisines field or invalid format. Expected array of cuisines'}), 400
+    
+    validated_cuisines = []
+    invalid_cuisines = []
+    for cuisine in data['cuisines']:
+        validated = validate_cuisine(cuisine)
+        if validated:
+            validated_cuisines.append(validated)
+        else:
+            invalid_cuisines.append(cuisine)
+    
+    if invalid_cuisines:
         return jsonify({
-            'message': 'Invalid cuisine',
+            'message': 'Invalid cuisines found',
+            'invalid_cuisines': invalid_cuisines,
             'allowed': sorted(ALLOWED_CUISINES)
         }), 400
     
+    if not validated_cuisines:
+        return jsonify({'message': 'No valid cuisines to remove'}), 400
+    
     result = user_preferences_collection.update_one(
         {'email': current_user['email']},
-        {'$pull': {'cuisines': cuisine}}
+        {'$pull': {'cuisines': {'$in': validated_cuisines}}}
     )
+    
     if result.modified_count == 0:
-        return jsonify({'message': 'Cuisine not found'}), 404
-    return jsonify({'message': 'Cuisine removed successfully'}), 200
+        return jsonify({'message': 'No cuisines were found to remove'}), 404
+    
+    return jsonify({
+        'message': 'Cuisines removed successfully',
+        'removed_cuisines': validated_cuisines
+    }), 200
