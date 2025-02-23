@@ -22,3 +22,5 @@ do
 CLIENT_ID="your kroger client id"
 CLIENT_SECRET="your kroger client secret""
 API_KEY="spoonacular api key"
+
+flask run --host=0.0.0.0 --port=12345

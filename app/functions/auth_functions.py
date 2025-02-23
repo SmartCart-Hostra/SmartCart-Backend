@@ -13,9 +13,7 @@ from email.mime.text import MIMEText
 import smtplib
 
 # JWT configuration
-JWT_SECRET_KEY = app.config.get("JWT_SECRET_KEY")
-if not JWT_SECRET_KEY:
-    JWT_SECRET_KEY = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+JWT_SECRET_KEY = app.config.get("JWT_SECRET_KEY") or ''.join(random.choices(string.ascii_letters + string.digits, k=32))
 
 def generate_2fa_token():
     """Generate a 6-digit 2FA token"""
@@ -42,21 +40,32 @@ def token_required(f):
     """Decorator for protected routes"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.cookies.get('token')
+        auth_header = request.headers.get('Authorization')
 
-        if not token:
-            return jsonify({'message': 'Token is missing'}), 401
+        if not auth_header:
+            return jsonify({'message': 'Authorization header is missing'}), 401
+
+        parts = auth_header.split(" ")
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return jsonify({'message': 'Invalid Authorization format'}), 401
+
+        token = parts[1]
 
         try:
             data = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
             current_user = users_collection.find_one({'email': data['email']})
             if not current_user:
                 return jsonify({'message': 'Invalid token'}), 401
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired'}), 401
+        except jwt.DecodeError:
+            return jsonify({'message': 'Token is invalid'}), 401
         except Exception as e:
-            print(f"Error decoding token: {e}")
-            return jsonify({'message': 'Invalid token'}), 401
+            print(f"Token decoding error: {e}")
+            return jsonify({'message': 'Token verification failed'}), 401
 
         return f(current_user, *args, **kwargs)
+
     return decorated
 
 def signup():
@@ -66,11 +75,9 @@ def signup():
     if not data or not data.get('email') or not data.get('password'):
         return jsonify({'message': 'Missing required fields'}), 400
 
-    # Check if user already exists
     if users_collection.find_one({'email': data['email']}):
         return jsonify({'message': 'User already exists'}), 409
 
-    # Hash password and create user
     hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256')
     new_user = {
         'email': data['email'],
@@ -81,7 +88,6 @@ def signup():
 
     users_collection.insert_one(new_user)
 
-    # Generate and send 2FA token
     token = generate_2fa_token()
     tokens_collection.insert_one({
         'email': data['email'],
@@ -110,29 +116,27 @@ def verify_2fa():
     if not stored_token:
         return jsonify({'message': 'Invalid or expired token'}), 401
 
-    # Update user verification status
     users_collection.update_one(
         {'email': data['email']},
         {'$set': {'is_verified': True}}
     )
 
-    # Clean up used token
     tokens_collection.delete_one({'_id': stored_token['_id']})
 
     return jsonify({'message': 'Email verified successfully'}), 200
 
 def login():
-    # Add cleanup of old tokens for this user
+    """Handle user login"""
+    data = request.json  # ✅ Extract data first!
+
+    if not data or not data.get('email') or not data.get('password'):
+        return jsonify({'message': 'Missing required fields'}), 400
+
+    # ✅ Now it's safe to clean old tokens because we have `data`
     tokens_collection.delete_many({
         'email': data['email'],
         'created_at': {'$lt': datetime.datetime.utcnow() - datetime.timedelta(minutes=10)}
     })
-
-    """Handle user login"""
-    data = request.json
-
-    if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'message': 'Missing required fields'}), 400
 
     user = users_collection.find_one({'email': data['email']})
 
@@ -142,7 +146,7 @@ def login():
     if not user['is_verified']:
         return jsonify({'message': 'Please verify your email first'}), 403
 
-    # Generate and send 2FA token for login
+    # ✅ Generate and send 2FA token for login
     token = generate_2fa_token()
     tokens_collection.insert_one({
         'email': data['email'],
@@ -154,6 +158,7 @@ def login():
         return jsonify({'message': 'Please check your email for 2FA code'}), 200
     else:
         return jsonify({'message': 'Error sending 2FA code'}), 500
+
 
 def login_verify():
     """Handle 2FA login verification"""
@@ -171,7 +176,6 @@ def login_verify():
     if not stored_token:
         return jsonify({'message': 'Invalid or expired token'}), 401
 
-        # Instead of setting a cookie, return the token in response body
     token = jwt.encode({
         'email': data['email'],
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
@@ -181,14 +185,12 @@ def login_verify():
 
     return jsonify({
         'message': 'Login successful',
-        'token': token  # Send token in response
-    })
+        'token': token
+    }), 200
 
 def logout():
     """Handle user logout"""
-    response = make_response(jsonify({'message': 'Logout successful'}))
-    response.delete_cookie('token')
-    return response
+    return jsonify({'message': 'Logout successful. Please remove token from client storage'}), 200
 
 def cleanup_expired_tokens():
     """Clean up expired tokens"""
@@ -196,29 +198,6 @@ def cleanup_expired_tokens():
     tokens_collection.delete_many({
         'created_at': {'$lt': expiry_time}
     })
-
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        # Check Authorization header instead of cookies
-        auth_header = request.headers.get('Authorization')
-        
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return jsonify({'message': 'Token is missing'}), 401
-
-        token = auth_header.split(' ')[1]  # Get token from "Bearer <token>"
-
-        try:
-            data = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
-            current_user = users_collection.find_one({'email': data['email']})
-            if not current_user:
-                return jsonify({'message': 'Invalid token'}), 401
-        except Exception as e:
-            print(f"Error decoding token: {e}")
-            return jsonify({'message': 'Invalid token'}), 401
-
-        return f(current_user, *args, **kwargs)
-    return decorated
 
 @token_required
 def protected_route(current_user):
