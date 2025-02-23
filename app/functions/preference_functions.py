@@ -32,6 +32,39 @@ ALLOWED_CUISINES = {
     "Nordic", "Southern", "Spanish", "Thai", "Vietnamese"
 }
 
+NUTRITION_GOALS = {
+    'low_carb': {
+        'name': 'Low Carb',
+        'params': {
+            'maxCarbs': 50,  # Maximum 50g carbs per serving
+            'minProtein': 20  # Ensure adequate protein
+        }
+    },
+    'high_protein': {
+        'name': 'High Protein',
+        'params': {
+            'minProtein': 30,  # Minimum 30g protein per serving
+            'maxFat': 30  # Limit fat for lean protein focus
+        }
+    },
+    'low_calorie': {
+        'name': 'Low Calorie',
+        'params': {
+            'maxCalories': 500,  # Maximum 500 calories per serving
+            'minProtein': 15  # Ensure adequate protein
+        }
+    },
+    'balanced': {
+        'name': 'Balanced',
+        'params': {
+            'minProtein': 20,
+            'maxFat': 30,
+            'maxCarbs': 60,
+            'minFiber': 5
+        }
+    }
+}
+
 def validate_diet(input_diet):
     lower_diet = input_diet.strip().lower()
     return ALLOWED_DIETS.get(lower_diet)
@@ -277,4 +310,89 @@ def remove_cuisines(current_user):
     return jsonify({
         'message': 'Cuisines removed successfully',
         'removed_cuisines': validated_cuisines
+    }), 200
+
+def validate_nutrition_goal(input_goal):
+    """Validate and return proper nutrition goal name"""
+    lower_goal = input_goal.strip().lower()
+    return NUTRITION_GOALS.get(lower_goal)
+
+# Add these new route handler functions
+def get_nutrition_goals(current_user):
+    """Get user's nutrition goals"""
+    prefs = user_preferences_collection.find_one({'email': current_user['email']})
+    return jsonify({'nutrition_goals': prefs.get('nutrition_goals', []) if prefs else []}), 200
+
+def add_nutrition_goals(current_user):
+    """Add nutrition goals to user preferences"""
+    data = request.json
+    if not data or not data.get('nutrition_goals') or not isinstance(data['nutrition_goals'], list):
+        return jsonify({'message': 'Missing nutrition_goals field or invalid format. Expected array of nutrition goals'}), 400
+    
+    validated_goals = []
+    invalid_goals = []
+    for goal in data['nutrition_goals']:
+        validated = validate_nutrition_goal(goal)
+        if validated:
+            validated_goals.append(validated['name'])
+        else:
+            invalid_goals.append(goal)
+    
+    if invalid_goals:
+        return jsonify({
+            'message': 'Invalid nutrition goals found',
+            'invalid_goals': invalid_goals,
+            'allowed': [goal['name'] for goal in NUTRITION_GOALS.values()]
+        }), 400
+    
+    if not validated_goals:
+        return jsonify({'message': 'No valid nutrition goals to add'}), 400
+    
+    user_preferences_collection.update_one(
+        {'email': current_user['email']},
+        {'$addToSet': {'nutrition_goals': {'$each': validated_goals}}},
+        upsert=True
+    )
+    
+    return jsonify({
+        'message': 'Nutrition goals added successfully',
+        'added_goals': validated_goals
+    }), 201
+
+def remove_nutrition_goals(current_user):
+    """Remove nutrition goals from user preferences"""
+    data = request.json
+    if not data or not data.get('nutrition_goals') or not isinstance(data['nutrition_goals'], list):
+        return jsonify({'message': 'Missing nutrition_goals field or invalid format. Expected array of nutrition goals'}), 400
+    
+    validated_goals = []
+    invalid_goals = []
+    for goal in data['nutrition_goals']:
+        validated = validate_nutrition_goal(goal)
+        if validated:
+            validated_goals.append(validated['name'])
+        else:
+            invalid_goals.append(goal)
+    
+    if invalid_goals:
+        return jsonify({
+            'message': 'Invalid nutrition goals found',
+            'invalid_goals': invalid_goals,
+            'allowed': [goal['name'] for goal in NUTRITION_GOALS.values()]
+        }), 400
+    
+    if not validated_goals:
+        return jsonify({'message': 'No valid nutrition goals to remove'}), 400
+    
+    result = user_preferences_collection.update_one(
+        {'email': current_user['email']},
+        {'$pull': {'nutrition_goals': {'$in': validated_goals}}}
+    )
+    
+    if result.modified_count == 0:
+        return jsonify({'message': 'No nutrition goals were found to remove'}), 404
+    
+    return jsonify({
+        'message': 'Nutrition goals removed successfully',
+        'removed_goals': validated_goals
     }), 200

@@ -22,17 +22,24 @@ def get_recipes(current_user):
             "number": 10
         }
 
-        # Add diets
+        # Add existing preference parameters
         if prefs.get('diets'):
             params["diet"] = ",".join([d.lower() for d in prefs['diets']])
-
-        # Add intolerances
         if prefs.get('intolerances'):
             params["intolerances"] = ",".join(prefs['intolerances'])
-
-        # Add cuisines
         if prefs.get('cuisines'):
             params["cuisine"] = ",".join(prefs['cuisines'])
+
+        # Add nutrition goal parameters
+        if prefs.get('nutrition_goals'):
+            nutrition_params = {}
+            for goal in prefs['nutrition_goals']:
+                goal_config = next((g for g in NUTRITION_GOALS.values() if g['name'] == goal), None)
+                if goal_config:
+                    nutrition_params.update(goal_config['params'])
+            
+            # Apply nutrition parameters to the API request
+            params.update(nutrition_params)
 
         response = requests.get(
             "https://api.spoonacular.com/recipes/complexSearch",
@@ -47,7 +54,8 @@ def get_recipes(current_user):
                 "filters": {
                     "diets": prefs.get('diets', []),
                     "intolerances": prefs.get('intolerances', []),
-                    "cuisines": prefs.get('cuisines', [])
+                    "cuisines": prefs.get('cuisines', []),
+                    "nutrition_goals": prefs.get('nutrition_goals', [])
                 }
             }
         }), 200
