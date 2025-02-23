@@ -57,17 +57,17 @@ def remove_cuisine_route(current_user):
     return remove_cuisines(current_user)
 
 # Nutrition Goal Routes
-@preference_routes.route('/nutrition-goals', methods=['GET'])
+@preference_routes.route('/nutrition_goals', methods=['GET'])
 @token_required
 def get_nutrition_goals_route(current_user):
     return get_nutrition_goals(current_user)
 
-@preference_routes.route('/nutrition-goals', methods=['POST'])
+@preference_routes.route('/nutrition_goals', methods=['POST'])
 @token_required
 def add_nutrition_goals_route(current_user):
     return add_nutrition_goals(current_user)
 
-@preference_routes.route('/nutrition-goals', methods=['DELETE'])
+@preference_routes.route('/nutrition_goals', methods=['DELETE'])
 @token_required
 def remove_nutrition_goals_route(current_user):
     return remove_nutrition_goals(current_user)
