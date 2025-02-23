@@ -13,7 +13,8 @@ API_KEY = os.getenv("API_KEY")
 def get_recipes(current_user):
     try:
         query = request.args.get("query")
-        prefs = current_app.user_preferences_collection.find_one(
+        from app import user_preferences_collection
+        prefs = user_preferences_collection.find_one(
             {"email": current_user["email"]}
         ) or {}
 
