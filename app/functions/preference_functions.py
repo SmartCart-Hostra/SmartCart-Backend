@@ -314,7 +314,7 @@ def remove_cuisines(current_user):
 
 def validate_nutrition_goal(input_goal):
     """Validate and return proper nutrition goal name"""
-    lower_goal = input_goal.strip().lower()
+    lower_goal = input_goal.strip().lower().replace(" ", "_") 
     return NUTRITION_GOALS.get(lower_goal)
 
 # Add these new route handler functions
