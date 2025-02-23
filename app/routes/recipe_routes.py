@@ -2,6 +2,7 @@ import os
 import requests
 from flask import Blueprint, jsonify, request, current_app
 from app.functions.auth_functions import token_required
+from app.functions.preference_functions import NUTRITION_GOALS
 
 recipe_routes = Blueprint('recipe_routes', __name__)
 

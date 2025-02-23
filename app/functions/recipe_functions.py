@@ -70,3 +70,4 @@ def recipe_ingredients(recipe_id):
     if error:
         return jsonify({'error': error}), 500
     return jsonify(ingredients)
+

@@ -1,9 +1,9 @@
 from flask import Blueprint
 from app.functions.auth_functions import token_required
 from app.functions.preference_functions import (
-    get_diets, add_diets, remove_diets,
+    add_nutrition_goals, get_diets, add_diets, get_nutrition_goals, remove_diets,
     get_intolerances, add_intolerances, remove_intolerances,
-    get_cuisines, add_cuisines, remove_cuisines
+    get_cuisines, add_cuisines, remove_cuisines, remove_nutrition_goals
 )
 
 preference_routes = Blueprint('preference_routes', __name__)
