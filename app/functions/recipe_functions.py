@@ -71,3 +71,17 @@ def recipe_ingredients(recipe_id):
         return jsonify({'error': error}), 500
     return jsonify(ingredients)
 
+def fetch_recipe_detail(recipe_id):
+    """
+    Fetches detailed information about a recipe using Spoonacular API.
+    """
+    url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
+    params = {"apiKey": SPOONACULAR_API_KEY}
+
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json(), 200
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching recipe details: {e}")
+        return {"error": "Failed to fetch recipe details"}, 500
