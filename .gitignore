@@ -1,2 +1,8 @@
 .DS_Store
 .env
+/.venv
+/app/__pycache__
+/app/__pycache__
+/app/functions/__pycache__
+/app/routes/__pycache__
+*.pyc

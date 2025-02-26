@@ -1,6 +1,7 @@
 # app/config.py
 import os
 from dotenv import load_dotenv
+import random, string
 
 load_dotenv()  # Load environment variables from .env file
 
