@@ -20,6 +20,9 @@ try:
     tokens_collection = db['tokens']
     user_preferences_collection = db['user_preferences']
     saved_recipes_collection = db['saved_recipes']
+    # New collections for cart and order functionality
+    cart_items_collection = db['cart_items']
+    orders_collection = db['orders']
 except Exception as e:
     print(f"Error connecting to MongoDB Atlas: {e}")
     raise
@@ -30,6 +33,9 @@ from app.routes.kroger_routes import kroger_routes
 from app.routes.recipe_routes import recipe_routes
 from app.routes.preference_routes import preference_routes
 from app.routes.saved_recipe_routes import saved_recipe_routes
+# Import new route blueprints
+from app.routes.cart_routes import cart_routes
+from app.routes.order_routes import order_routes
 
 # Register blueprints
 app.register_blueprint(auth_routes)
@@ -37,6 +43,9 @@ app.register_blueprint(kroger_routes)
 app.register_blueprint(recipe_routes)
 app.register_blueprint(preference_routes)
 app.register_blueprint(saved_recipe_routes)
+# Register new blueprints
+app.register_blueprint(cart_routes)
+app.register_blueprint(order_routes)
 
 # Set JWT secret key
 app.config['JWT_SECRET_KEY'] = JWT_SECRET_KEY
