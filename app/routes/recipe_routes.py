@@ -5,10 +5,17 @@ from flask import Blueprint, jsonify, request
 from app.functions.auth_functions import token_required
 from app.functions.preference_functions import NUTRITION_GOALS
 from app.functions.recipe_functions import fetch_recipe_detail
+from dotenv import load_dotenv
+from pathlib import Path
 
 recipe_routes = Blueprint('recipe_routes', __name__)
 
+# Force load environment variables
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+load_dotenv(BASE_DIR / '.env', override=True)
+
 API_KEY = os.getenv("API_KEY")
+print(f"🔑 Recipe Routes API Key: {API_KEY}")
 
 @recipe_routes.route("/recipedetail/<int:recipe_id>", methods=['GET'])
 @token_required
@@ -162,6 +169,33 @@ def get_recipes(current_user):
 
             params.update(nutrition_params)
 
+        # Add price range filter
+        price_range = request.args.get("price_range")
+        if price_range:
+            if price_range == "low":
+                params["maxPrice"] = 10
+            elif price_range == "mid":
+                params["minPrice"] = 10
+                params["maxPrice"] = 30
+            elif price_range == "expensive":
+                params["minPrice"] = 30
+
+        # Add time filter
+        time_range = request.args.get("time_range")
+        if time_range:
+            if time_range == "quick":
+                params["maxReadyTime"] = 15
+            elif time_range == "medium":
+                params["minReadyTime"] = 15
+                params["maxReadyTime"] = 30
+            elif time_range == "long":
+                params["minReadyTime"] = 30
+
+        # Add meal type filter
+        meal_type = request.args.get("meal_type")
+        if meal_type:
+            params["type"] = meal_type
+
         response = requests.get(
             "https://api.spoonacular.com/recipes/complexSearch",
             params=params
@@ -181,7 +215,10 @@ def get_recipes(current_user):
                     "diets": prefs.get('diets', []),
                     "intolerances": prefs.get('intolerances', []),
                     "cuisines": prefs.get('cuisines', []),
-                    "nutrition_goals": prefs.get('nutrition_goals', [])
+                    "nutrition_goals": prefs.get('nutrition_goals', []),
+                    "price_range": price_range,
+                    "time_range": time_range,
+                    "meal_type": meal_type
                 }
             }
         }), 200
