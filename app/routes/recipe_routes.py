@@ -128,7 +128,6 @@ def get_random_recipes(current_user):
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-
 @recipe_routes.route('/recipes', methods=['GET'])
 @token_required
 def get_recipes(current_user):
@@ -139,19 +138,20 @@ def get_recipes(current_user):
             {"email": current_user["email"]}
         ) or {}
 
-        # Get pagination parameters from request (default: page=1, limit=10)
-        page = request.args.get("page", 1, type=int)  # Page number (1-based)
-        limit = request.args.get("limit", 10, type=int)  # Results per page
-        offset = (page - 1) * limit  # Convert page number to offset
+        # Pagination
+        page = request.args.get("page", 1, type=int)
+        limit = request.args.get("limit", 10, type=int)
+        offset = (page - 1) * limit
 
+        # Build initial API parameters
         params = {
             "query": query,
             "apiKey": API_KEY,
-            "number": limit,  # Recipes per page
-            "offset": offset  # Start position for pagination
+            "number": limit * 2,  # Fetch extra for post-filtering
+            "offset": offset
         }
 
-        # Add existing preference parameters
+        # Diets, intolerances, cuisines
         if prefs.get('diets'):
             params["diet"] = ",".join([d.lower() for d in prefs['diets']])
         if prefs.get('intolerances'):
@@ -159,55 +159,72 @@ def get_recipes(current_user):
         if prefs.get('cuisines'):
             params["cuisine"] = ",".join(prefs['cuisines'])
 
-        # Add nutrition goal parameters
+        # Nutrition goals
         if prefs.get('nutrition_goals'):
             nutrition_params = {}
             for goal in prefs['nutrition_goals']:
                 goal_config = next((g for g in NUTRITION_GOALS.values() if g['name'] == goal), None)
                 if goal_config:
                     nutrition_params.update(goal_config['params'])
-
             params.update(nutrition_params)
 
-        # Add price range filter
+        # === Frontend Filters ===
         price_range = request.args.get("price_range")
-        if price_range:
-            if price_range == "low":
-                params["maxPrice"] = 10
-            elif price_range == "mid":
-                params["minPrice"] = 10
-                params["maxPrice"] = 30
-            elif price_range == "expensive":
-                params["minPrice"] = 30
-
-        # Add time filter
         time_range = request.args.get("time_range")
-        if time_range:
-            if time_range == "quick":
-                params["maxReadyTime"] = 15
-            elif time_range == "medium":
-                params["minReadyTime"] = 15
-                params["maxReadyTime"] = 30
-            elif time_range == "long":
-                params["minReadyTime"] = 30
-
-        # Add meal type filter
         meal_type = request.args.get("meal_type")
-        if meal_type:
-            params["type"] = meal_type
 
+        # Map time_range to maxReadyTime
+        if time_range == "quick":
+            params["maxReadyTime"] = 15
+        elif time_range == "medium":
+            params["maxReadyTime"] = 30
+        elif time_range == "long":
+            params["maxReadyTime"] = 90
+
+        # Meal type mapping
+        meal_type_map = {
+            "breakfast": "breakfast",
+            "lunch": "main course",
+            "dinner": "main course",
+            "main course": "main course",
+            "appetizer": "appetizer",
+            "dessert": "dessert"
+        }
+        mapped_meal_type = meal_type_map.get(meal_type.lower()) if meal_type else None
+        if mapped_meal_type:
+            params["type"] = mapped_meal_type
+
+        # === Make the API call ===
         response = requests.get(
             "https://api.spoonacular.com/recipes/complexSearch",
             params=params
         )
         response.raise_for_status()
         data = response.json()
+        all_results = data.get("results", [])
+
+        # === Post-filter price range ===
+        filtered_results = []
+        for recipe in all_results:
+            price = recipe.get("pricePerServing", 0) / 100  # Convert cents to dollars
+
+            if price_range == "low" and price > 10:
+                continue
+            elif price_range == "mid" and not (10 < price <= 30):
+                continue
+            elif price_range == "expensive" and price <= 30:
+                continue
+
+            filtered_results.append(recipe)
+
+            if len(filtered_results) >= limit:
+                break
 
         return jsonify({
-            "results": data.get("results", []),
+            "results": filtered_results,
             "meta": {
-                "count": len(data.get("results", [])),
-                "total_results": data.get("totalResults", 0),  # Spoonacular provides total results
+                "count": len(filtered_results),
+                "total_results": data.get("totalResults", 0),
                 "page": page,
                 "limit": limit,
                 "next_page": page + 1 if offset + limit < data.get("totalResults", 0) else None,
