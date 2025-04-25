@@ -4,7 +4,7 @@ import json
 from flask import Blueprint, jsonify, request
 from app.functions.auth_functions import token_required
 from app.functions.preference_functions import NUTRITION_GOALS
-from app.functions.recipe_functions import fetch_recipe_detail
+from app.functions.recipe_functions import fetch_recipe_detail, find_recipes_by_ingredients
 
 recipe_routes = Blueprint('recipe_routes', __name__)
 
@@ -188,5 +188,43 @@ def get_recipes(current_user):
 
     except requests.exceptions.HTTPError as e:
         return jsonify({"error": f"Spoonacular API error: {str(e)}"}), 502
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@recipe_routes.route('/recipes/by-ingredients', methods=['GET'])
+@token_required
+def recipes_by_ingredients(current_user):
+    try:
+        # Get ingredients from query parameters
+        ingredients = request.args.get("ingredients")
+        if not ingredients:
+            return jsonify({"error": "Missing ingredients parameter"}), 400
+        
+        # Get optional parameters with defaults
+        number = request.args.get("number", 10, type=int)
+        limit_license = request.args.get("limitLicense", "true").lower() == "true"
+        ranking = request.args.get("ranking", 1, type=int)
+        ignore_pantry = request.args.get("ignorePantry", "false").lower() == "true"
+        
+        # Call the function to find recipes by ingredients
+        data, status_code = find_recipes_by_ingredients(
+            ingredients=ingredients,
+            number=number,
+            limit_license=limit_license,
+            ranking=ranking,
+            ignore_pantry=ignore_pantry
+        )
+        
+        if "error" in data:
+            return jsonify(data), status_code
+            
+        return jsonify({
+            "results": data,
+            "meta": {
+                "count": len(data),
+                "ingredients": ingredients.split(',')
+            }
+        }), status_code
+        
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500

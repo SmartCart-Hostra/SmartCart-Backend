@@ -85,3 +85,39 @@ def fetch_recipe_detail(recipe_id):
     except requests.exceptions.RequestException as e:
         print(f"Error fetching recipe details: {e}")
         return {"error": "Failed to fetch recipe details"}, 500
+
+def find_recipes_by_ingredients(ingredients, number=10, limit_license=True, ranking=1, ignore_pantry=False):
+    """
+    Find recipes that use the provided ingredients using Spoonacular API.
+    
+    Args:
+        ingredients (list or str): List of ingredients or comma-separated string
+        number (int): Maximum number of recipes to return
+        limit_license (bool): Whether to limit results to recipes with licenses
+        ranking (int): Whether to rank by 1=maximize used ingredients, 2=minimize missing ingredients
+        ignore_pantry (bool): Whether to ignore pantry ingredients like salt, pepper, etc.
+    
+    Returns:
+        tuple: (data, status_code)
+    """
+    # Ensure ingredients is a comma-separated string
+    if isinstance(ingredients, list):
+        ingredients = ','.join(ingredients)
+    
+    url = "https://api.spoonacular.com/recipes/findByIngredients"
+    params = {
+        "ingredients": ingredients,
+        "number": number,
+        "apiKey": SPOONACULAR_API_KEY,
+        "limitLicense": str(limit_license).lower(),
+        "ranking": ranking,
+        "ignorePantry": str(ignore_pantry).lower()
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json(), 200
+    except requests.exceptions.RequestException as e:
+        print(f"Error finding recipes by ingredients: {e}")
+        return {"error": "Failed to find recipes by ingredients"}, 500
