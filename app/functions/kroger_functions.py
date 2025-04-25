@@ -279,3 +279,76 @@ def kroger_recipe_ingredients_info(recipe_id):
         'ingredients': kroger_ingredients,
         'totalPrice': round(total_price, 2)
     })
+
+def get_product_details(product_id):
+    """
+    Get detailed information for a specific product from the Kroger API by product ID.
+    
+    Args:
+        product_id (str): The Kroger product ID
+        
+    Returns:
+        dict: Product details or None if not found
+    """
+    try:
+        # Get access token
+        access_token = get_access_token()
+        if not access_token:
+            return {"error": "Failed to get Kroger access token"}, 500
+            
+        # Make API request to get product details
+        product_url = f"https://api.kroger.com/v1/products/{product_id}?filter.locationId={LOCATION_ID}"
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {access_token}'
+        }
+        
+        product_response = requests.get(product_url, headers=headers)
+        product_response.raise_for_status()
+        product_data = product_response.json()
+        
+        if not product_data.get('data'):
+            return {"error": "Product not found"}, 404
+            
+        product = product_data['data']
+        
+        # Format the response
+        product_info = {
+            'productId': product.get('productId', 'N/A'),
+            'upc': product.get('upc', 'N/A'),
+            'description': product.get('description', 'N/A'),
+            'brand': product.get('brand', 'N/A'),
+            'categories': product.get('categories', ['N/A']),
+            'countryOrigin': product.get('countryOrigin', 'N/A'),
+            'temperature': product.get('temperature', 'N/A'),
+            'images': product.get('images', []),
+            'items': []
+        }
+        
+        # Process items with default values
+        for item in product.get('items', []):
+            item_info = {
+                'itemId': item.get('itemId', 'N/A'),
+                'price': {
+                    'regular': item.get('price', {}).get('regular', 0.0),
+                    'promo': item.get('price', {}).get('promo', None)
+                },
+                'size': item.get('size', 'N/A'),
+                'soldBy': item.get('soldBy', 'N/A'),
+                'inventory': item.get('inventory', {
+                    'status': 'N/A'
+                }),
+                'fulfillment': item.get('fulfillment', {
+                    'status': 'N/A'
+                })
+            }
+            product_info['items'].append(item_info)
+            
+        return product_info, 200
+        
+    except requests.exceptions.HTTPError as http_err:
+        status_code = http_err.response.status_code if hasattr(http_err, 'response') else 502
+        return {"error": f"HTTP error occurred: {str(http_err)}"}, status_code
+    except Exception as e:
+        print(f"Error getting product details: {str(e)}")
+        return {"error": f"Failed to get product details: {str(e)}"}, 500
