@@ -2,11 +2,15 @@ import os
 import requests
 from flask import jsonify, request
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()  # Load environment variables from .env file
+# Force load environment variables
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+load_dotenv(BASE_DIR / '.env', override=True)
 
 # Spoonacular API key
 SPOONACULAR_API_KEY = os.getenv("API_KEY")
+print(f"🔑 Recipe Functions API Key: {SPOONACULAR_API_KEY}")
 
 def recipes():
     """

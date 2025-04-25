@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 import random, string
 
-load_dotenv()  # Load environment variables from .env file
+load_dotenv('../.env', override=True)  # Load environment variables from .env file
 
 # SMTP configuration
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")

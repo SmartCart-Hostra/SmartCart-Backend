@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv('.env', override=True)
 
 class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
