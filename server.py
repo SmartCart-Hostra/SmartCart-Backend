@@ -533,14 +533,14 @@ def kroger_search():
             'products': [],
             'error': str(e)
         })
-<<<<<<< Updated upstream
+
 from app.routes.recipe_routes import recipe_routes
 app.register_blueprint(recipe_routes)  
 
 
-=======
 app.register_blueprint(recipe_routes)
->>>>>>> Stashed changes
+print(recipe_routes)
+
 if __name__ == "__main__":
     # accessTokenKroger = get_access_token()
     app.run(debug=True)
