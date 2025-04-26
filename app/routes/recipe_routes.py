@@ -23,14 +23,9 @@ print(f"🔑 Recipe Routes API Key: {API_KEY}")
 @recipe_routes.route("/recipedetail/<int:recipe_id>", methods=['GET'])
 @token_required
 def recipe_detail_get(current_user, recipe_id):
-    """
-    Returns detailed information about a recipe.
-    """
     data, status_code = fetch_recipe_detail(recipe_id)
-
     if "error" in data:
         return jsonify(data), status_code
-
     return jsonify(data), status_code
 
 # ======= RANDOM RECIPE GENERATION (FILTERED) =======
@@ -179,7 +174,6 @@ def get_recipes(current_user):
         filtered_results = []
         for recipe in all_results:
             price = recipe.get("pricePerServing", 0) / 100
-
             if price_range == "low" and price > 10:
                 continue
             elif price_range == "mid" and not (10 < price <= 30):

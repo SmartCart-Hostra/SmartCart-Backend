@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, make_response
+from app.routes.recipe_routes import recipe_routes
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import jwt
@@ -532,10 +533,14 @@ def kroger_search():
             'products': [],
             'error': str(e)
         })
+<<<<<<< Updated upstream
 from app.routes.recipe_routes import recipe_routes
 app.register_blueprint(recipe_routes)  
 
 
+=======
+app.register_blueprint(recipe_routes)
+>>>>>>> Stashed changes
 if __name__ == "__main__":
     # accessTokenKroger = get_access_token()
     app.run(debug=True)
