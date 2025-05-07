@@ -1,24 +1,28 @@
 # 📄 smart_recc_function.py
 
-import openai
 import numpy as np
 from flask import jsonify
 from app import saved_recipes_collection, user_preferences_collection
 import requests
 import os
-
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+from openai import OpenAI
 
 SPOONACULAR_API_KEY = os.environ.get("API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # -------------------- Embedding Helper -------------------- #
 def get_embedding(text):
-    response = openai.Embedding.create(
-        input=text,
-        model="text-embedding-ada-002"
-    )
-    return response['data'][0]['embedding']
+    try:
+        response = client.embeddings.create(
+            input=[text],
+            model="text-embedding-ada-002"
+        )
+        return response.data[0].embedding
+    except Exception as e:
+        print(f"🔴 Error generating embedding: {e}")
+        return None
 
 # -------------------- Cosine Similarity -------------------- #
 def cosine_similarity(a, b):
@@ -45,31 +49,26 @@ def fetch_candidate_recipes(diets=None, intolerances=None):
         print("❌ Spoonacular error:", res.text)
         return []
 
-    data = res.json()
-    return data.get("results", [])
+    return res.json().get("results", [])
 
 # -------------------- Smart Recommendation Generator -------------------- #
 def generate_smart_recommendations(current_user):
     user_email = current_user['email']
     saved = list(saved_recipes_collection.find({"user_email": user_email}))
 
-    if len(saved) < 3:
-        return jsonify({
-            "showSmartRecommendations": False,
-            "message": "Save at least 3 recipes to get personalized results."
-        }), 200
-
     # Retrieve user diet/intolerance preferences
     user_prefs = user_preferences_collection.find_one({"email": user_email}) or {}
     diet_list = user_prefs.get("diets", [])
     intolerance_list = user_prefs.get("intolerances", [])
 
-    # Embed saved recipes
-    saved_titles = [r.get("title", "") for r in saved]
-    saved_embeddings = [get_embedding(title) for title in saved_titles]
-    user_profile = np.mean(saved_embeddings, axis=0)
+    user_profile = None
 
-    # Fetch filtered candidate recipes
+    if saved:
+        saved_titles = [r.get("title", "") for r in saved if r.get("title")]
+        saved_embeddings = [get_embedding(title) for title in saved_titles if get_embedding(title)]
+        if saved_embeddings:
+            user_profile = np.mean(saved_embeddings, axis=0)
+
     candidates = fetch_candidate_recipes(diet_list, intolerance_list)
     recommendations = []
 
@@ -80,17 +79,21 @@ def generate_smart_recommendations(current_user):
 
         try:
             emb = get_embedding(title)
-            similarity = cosine_similarity(user_profile, emb)
+            if emb is None:
+                continue
+
+            match_score = cosine_similarity(user_profile, emb) * 100 if user_profile is not None else 0
+
             recommendations.append({
                 "id": id,
                 "title": title,
                 "image": image,
-                "match_score": round(similarity * 100, 2)
+                "match_score": round(match_score, 2)
             })
         except Exception as e:
+            print(f"⚠️ Error computing similarity for {title}: {e}")
             continue
 
-    # Sort and return top results
     top_results = sorted(recommendations, key=lambda x: x['match_score'], reverse=True)[:5]
 
     return jsonify({
