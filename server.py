@@ -9,6 +9,7 @@ import smtplib
 from email.mime.text import MIMEText
 import random
 import string
+from app.routes.recipe_routes import recipe_routes
 
 
 import aiohttp
@@ -534,5 +535,7 @@ def kroger_search():
         })
 
 if __name__ == "__main__":
-    # accessTokenKroger = get_access_token()
+    # Register all recipe-related routes, including smart recommendations
+    app.register_blueprint(recipe_routes)
     app.run(debug=True)
+
